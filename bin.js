@@ -12,12 +12,13 @@ const temp = tmpdir();
 
 const {
 	positionals: [cmd],
-	values: { port, help, pid: pidFile },
+	values: { port, help, pid: pidFile, restart },
 } = parseArgs({
 	options: {
 		help: { type: 'boolean', short: 'h', default: false },
 		port: { type: 'string', short: 'p', default: '9999' },
 		pid: { type: 'string', default: join(temp, 'cors-proxy.pid') },
+		restart: { type: 'boolean', short: 'r', default: false },
 	},
 	allowPositionals: true,
 });
@@ -33,7 +34,8 @@ Commands:
 Options:
     -h, --help          Show this help message
     -p, --port <port>   Port to listen on (default: 9999)
-    --pid <path>        Path to PID file (default: ${join(temp, 'cors-proxy.pid')}`);
+    --pid <path>        Path to PID file (default: ${join(temp, 'cors-proxy.pid')}
+    -r, --restart       Restart the daemon if it is already running. Only valid with start`);
 }
 
 function getPID(strict) {
@@ -73,12 +75,15 @@ switch (cmd) {
 		if (existsSync(pidFile)) {
 			const [pid, processExists] = getPID(true);
 
-			if (processExists) {
-				console.error(`Daemon is already running (pid is ${pid})`);
-				process.exit(16);
-			} else {
+			if (!processExists) {
 				unlinkSync(pidFile);
 				console.error('Removed stale PID file');
+			} else if (restart) {
+				process.kill(pid);
+				console.error('Stopped existing daemon');
+			} else {
+				console.error(`Daemon is already running (pid is ${pid})`);
+				process.exit(16);
 			}
 		}
 
@@ -88,7 +93,7 @@ switch (cmd) {
 			{ stdio: 'ignore', detached: true },
 		);
 		daemon.unref();
-		console.log('Started CORS proxy server with PID', daemon.pid);
+		console.log('Started CORS proxy daemon with PID', daemon.pid);
 		writeFileSync(pidFile, daemon.pid.toString());
 		break;
 	}
