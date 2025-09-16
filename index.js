@@ -1,6 +1,6 @@
 import { readFileSync } from 'fs';
 import { join } from 'path';
-import { parse } from 'url';
+import { Writable } from 'stream';
 
 const origin = process.env.ALLOW_ORIGIN || '*';
 const insecure_origins = (process.env.INSECURE_HTTP_ORIGINS || '').split(',');
@@ -55,10 +55,16 @@ const landingPage = readFileSync(join(import.meta.dirname, 'index.html'), 'utf8'
 	origin,
 );
 
+/**
+ * 
+ * @param {import('http').IncomingMessage} req 
+ * @param {URL} u
+ */
 function isAllowed(req, u) {
 	const isInfoRefs =
 		u.pathname.endsWith('/info/refs') &&
-		(u.query.service === 'git-upload-pack' || u.query.service === 'git-receive-pack');
+		(u.searchParams.get('service') === 'git-upload-pack' || u.searchParams.get('service') === 'git-receive-pack');
+
 
 	switch (req.method) {
 		case 'OPTIONS':
@@ -81,8 +87,14 @@ function isAllowed(req, u) {
 	}
 }
 
+/**
+ * 
+ * @param {import('http').ClientRequest} req 
+ * @param {import('http').ServerResponse} res 
+ * @returns 
+ */
 export default function handleRequest(req, res) {
-	const u = parse(req.url, true);
+	const u = new URL(req.url, `https://0.0.0.0:${req.socket.localPort}/`);
 
 	// CORS
 
@@ -135,7 +147,7 @@ export default function handleRequest(req, res) {
 		headers['user-agent'] = 'git/@isomorphic-git/cors-proxy';
 	}
 
-	let p = u.path;
+	let p = u.pathname;
 	let [, pathdomain, remainingpath] = p.match(/\/([^\/]*)\/(.*)/);
 	let protocol = insecure_origins.includes(pathdomain) ? 'http' : 'https';
 
@@ -160,6 +172,10 @@ export default function handleRequest(req, res) {
 		if (f.redirected) {
 			res.setHeader('x-redirected-url', f.url);
 		}
-		f.body.pipe(res);
+		return f.body.pipeTo(Writable.toWeb(res));
+	}).catch(e => {
+		res.statusCode = 502;
+		console.error(e);
+		res.end();
 	});
 }

@@ -64,7 +64,7 @@ switch (cmd) {
 	case 'run': {
 		const server = createServer(handleRequest);
 		server.listen(port, () => console.log('Listening on port', port));
-		process.on('exit', () => {
+		process.on('beforeExit', () => {
 			console.log('Shutting down server');
 			server.close();
 			unlinkSync(pidFile);
