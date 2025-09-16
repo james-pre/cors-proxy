@@ -56,15 +56,14 @@ const landingPage = readFileSync(join(import.meta.dirname, 'index.html'), 'utf8'
 );
 
 /**
- * 
- * @param {import('http').IncomingMessage} req 
+ *
+ * @param {import('http').IncomingMessage} req
  * @param {URL} u
  */
 function isAllowed(req, u) {
 	const isInfoRefs =
 		u.pathname.endsWith('/info/refs') &&
 		(u.searchParams.get('service') === 'git-upload-pack' || u.searchParams.get('service') === 'git-receive-pack');
-
 
 	switch (req.method) {
 		case 'OPTIONS':
@@ -88,10 +87,10 @@ function isAllowed(req, u) {
 }
 
 /**
- * 
- * @param {import('http').ClientRequest} req 
- * @param {import('http').ServerResponse} res 
- * @returns 
+ *
+ * @param {import('http').IncomingMessage} req
+ * @param {import('http').ServerResponse} res
+ * @returns
  */
 export default function handleRequest(req, res) {
 	const u = new URL(req.url, `https://0.0.0.0:${req.socket.localPort}/`);
@@ -135,7 +134,7 @@ export default function handleRequest(req, res) {
 
 	if (process.env.DEBUG) console.log(req.method, req.url);
 
-	let headers = {};
+	const headers = {};
 	for (let h of allowHeaders) {
 		if (req.headers[h]) {
 			headers[h] = req.headers[h];
@@ -143,12 +142,11 @@ export default function handleRequest(req, res) {
 	}
 
 	// GitHub uses user-agent sniffing for git/* and changes its behavior which is frustrating
-	if (!headers['user-agent'] || !headers['user-agent'].startsWith('git/')) {
+	if (!headers['user-agent']?.startsWith('git/')) {
 		headers['user-agent'] = 'git/@isomorphic-git/cors-proxy';
 	}
 
-	let p = u.pathname;
-	let [, pathdomain, remainingpath] = p.match(/\/([^\/]*)\/(.*)/);
+	let [, pathdomain, remainingpath] = u.pathname.match(/\/([^\/]*)\/(.*)/);
 	let protocol = insecure_origins.includes(pathdomain) ? 'http' : 'https';
 
 	fetch(`${protocol}://${pathdomain}/${remainingpath}`, {
@@ -156,26 +154,28 @@ export default function handleRequest(req, res) {
 		redirect: 'manual',
 		headers,
 		body: req.method !== 'GET' && req.method !== 'HEAD' ? req : undefined,
-	}).then((f) => {
-		if (f.headers.has('location')) {
-			// Modify the location so the client continues to use the proxy
-			let newUrl = f.headers.get('location').replace(/^https?:\//, '');
-			f.headers.set('location', newUrl);
-		}
-		res.statusCode = f.status;
-		for (let h of exposeHeaders) {
-			if (h === 'content-length') continue;
-			if (f.headers.has(h)) {
-				res.setHeader(h, f.headers.get(h));
+	})
+		.then((f) => {
+			if (f.headers.has('location')) {
+				// Modify the location so the client continues to use the proxy
+				let newUrl = f.headers.get('location').replace(/^https?:\//, '');
+				f.headers.set('location', newUrl);
 			}
-		}
-		if (f.redirected) {
-			res.setHeader('x-redirected-url', f.url);
-		}
-		return f.body.pipeTo(Writable.toWeb(res));
-	}).catch(e => {
-		res.statusCode = 502;
-		console.error(e);
-		res.end();
-	});
+			res.statusCode = f.status;
+			for (let h of exposeHeaders) {
+				if (h === 'content-length') continue;
+				if (f.headers.has(h)) {
+					res.setHeader(h, f.headers.get(h));
+				}
+			}
+			if (f.redirected) {
+				res.setHeader('x-redirected-url', f.url);
+			}
+			return f.body.pipeTo(Writable.toWeb(res));
+		})
+		.catch((e) => {
+			res.statusCode = 502;
+			console.error(e);
+			res.end();
+		});
 }
