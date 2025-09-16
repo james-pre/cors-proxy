@@ -4,6 +4,7 @@
   "description": "Proxy clone and push requests for the browser",
   "main": "index.js",
   "bin": "bin.js",
+  "type": "module",
   "scripts": {
     "start": "cors-proxy start",
     "dev": "cors-proxy run",

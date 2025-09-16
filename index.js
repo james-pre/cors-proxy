@@ -84,14 +84,6 @@ function isAllowed(req, u) {
 export default function handleRequest(req, res) {
 	const u = parse(req.url, true);
 
-	if (!isAllowed(req, u)) {
-		res.statusCode = 403;
-		res.end();
-		return;
-	}
-
-	if (process.env.DEBUG) console.log(req.method, req.url);
-
 	// CORS
 
 	res.setHeader('Access-Control-Allow-Origin', origin);
@@ -122,6 +114,14 @@ export default function handleRequest(req, res) {
 		res.end(landingPage);
 		return;
 	}
+
+	if (!isAllowed(req, u)) {
+		res.statusCode = 403;
+		res.end();
+		return;
+	}
+
+	if (process.env.DEBUG) console.log(req.method, req.url);
 
 	let headers = {};
 	for (let h of allowHeaders) {
