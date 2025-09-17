@@ -154,6 +154,7 @@ export default function handleRequest(req, res) {
 		redirect: 'manual',
 		headers,
 		body: req.method !== 'GET' && req.method !== 'HEAD' ? req : undefined,
+		duplex: 'half',
 	})
 		.then((f) => {
 			if (f.headers.has('location')) {
