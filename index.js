@@ -147,9 +147,9 @@ export default function handleRequest(req, res) {
 	}
 
 	let [, pathdomain, remainingpath] = u.pathname.match(/\/([^\/]*)\/(.*)/);
-	let protocol = insecure_origins.includes(pathdomain) ? 'http' : 'https';
+	const protocol = insecure_origins.includes(pathdomain) ? 'http' : 'https';
 
-	fetch(`${protocol}://${pathdomain}/${remainingpath}`, {
+	fetch(`${protocol}://${pathdomain}/${remainingpath}${u.search}`, {
 		method: req.method,
 		redirect: 'manual',
 		headers,
