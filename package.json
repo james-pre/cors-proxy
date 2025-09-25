@@ -24,6 +24,7 @@
   "now": {
     "public": true
   },
+  "dependencies": {},
   "devDependencies": {
     "prettier": "^3.6.2",
     "semantic-release": "^24.2.8"
